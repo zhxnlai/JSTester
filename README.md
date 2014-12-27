@@ -31,6 +31,30 @@ Here is an example:
 ~~~
 This would mean that the program MUST use a 'for loop' and a 'variable declaration', MUST NOT use a 'while loop' or an 'if statement' and that there should be a 'for loop' and inside of it there should be an 'if statement'.
 
+###output
+The return value will be an object. `output.success` will be a boolean specifying whether the test is performed successfully and the program has passed the test.
+
+If an error occurs, `output.success` will be set to `false` and `output.error` will be set to a string specifying the error description. Here is an example output with error:
+~~~json
+{
+  "success": false,
+  "error": "options is empty or no valid options"
+}
+~~~
+
+If no error occurs and the program failed the test, `output.success` will be set to `false` and `output.failed` will be set to an object describing the test result. Here is an example:
+~~~json
+{
+  "success": false,
+  "failed": {
+    "whiteList": [
+      "ForStatement"
+    ]
+  }
+}
+~~~
+This would mean that the program does not have a 'for statement'.
+
 Testing
 ---
 Unit tests with [Mocha](https://github.com/mochajs/mocha) and [should.js](https://github.com/tj/should.js) are available in the test.js file. You can run tests by executing `$ Mocha` in the `./src` folder.
