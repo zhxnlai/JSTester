@@ -7,99 +7,255 @@
       var acorn = require('acorn');
       var walk = require('acorn/util/walk');
 
-      var defaultOptions = {
-        "BlockStatement" : true
+      var validNodeTypes = {
+        // basic
+        "Printable": true,
+        "Node": true,
+        "SourceLocation": true,
+        "Position": true,
+        "Program": true,
+        "Function": true,
+        "BlockStatement": true,
+        "ExpressionStatement": true,
+        "IfStatement": true,
+        "LabeledStatement": true,
+        "BreakStatement": true,
+        "ContinueStatement": true,
+        "WithStatement": true,
+        "SwitchStatement": true,
+        "ReturnStatement": true,
+        "ThrowStatement": true,
+        "TryStatement": true,
+        "CatchClause": true,
+        "WhileStatement": true,
+        "DoWhileStatement": true,
+        "ForStatement": true,
+        "ForInStatement": true,
+        "FunctionDeclaration": true,
+        "FunctionExpression": true,
+        "VariableDeclaration": true,
+        "VariableDeclarator": true,
+        "ArrayExpression": true,
+        "ObjectExpression": true,
+        "Property": true,
+        "SequenceExpression": true,
+        "UnaryExpression": true,
+        "BinaryExpression": true,
+        "AssignmentExpression": true,
+        "UpdateExpression": true,
+        "LogicalExpression": true,
+        "ConditionalExpression": true,
+        "NewExpression": true,
+        "CallExpression": true,
+        "MemberExpression": true,
+        "ObjectPattern": true,
+        "PropertyPattern": true,
+        "ArrayPattern": true,
+        "SwitchCase": true,
+        "Identifier": true,
+        "Literal": true,
+        "Block": true,
+        "Line": true,
+
+        // ES6
+        "ArrowFunctionExpression": true,
+        "YieldExpression": true,
+        "GeneratorExpression": true,
+        "ComprehensionExpression": true,
+        "ComprehensionBlock": true,
+        "ModuleSpecifier": true,
+        "MethodDefinition": true,
+        "SpreadElement": true,
+        "SpreadElementPattern": true,
+        "ClassProperty": true,
+        "ClassBody": true,
+        "ClassDeclaration": true,
+        "ClassExpression": true,
+        "ClassImplements": true,
+        "NamedSpecifier": true,
+        "ExportSpecifier": true,
+        "ExportBatchSpecifier": true,
+        "ImportSpecifier": true,
+        "ImportNamespaceSpecifier": true,
+        "ImportDefaultSpecifier": true,
+        "ExportDeclaration": true,
+        "ImportDeclaration": true,
+        "TaggedTemplateExpression": true,
+        "TemplateLiteral": true,
+        "TemplateElement": true,
       };
-      exports.supportedStatements = defaultOptions;
+      exports.validNodeTypes = validNodeTypes;
 
-      // var testWhiteList = function(input, list) {
-      //   // convert the array to object
-      //   var options = list;
-      //   return test(input, options);
-      // };
-      // exports.testWhiteList = testWhiteList;
-      //
-      // var testBlackList = function(input, list) {
-      //   var options = list;
-      //
-      //   return test(input, options);
-      // };
-      // exports.testBlackList = testBlackList;
-      //
-      // var testStructure = function(input, options) {
-      // };
-      // exports.testStructure = testStructure;
+      var validOptions = ["whiteList", "blackList", "structure"];
+      exports.validOptions = validOptions;
 
-      // assume that opts.whiteList and opts.blackList follow the parse API
       var test = function(input, opts) {
+        if (!opts) {
+          return {success: false, error: "options is not specified"};
+        }
         var options = {};
-        // for (var opt in defaultOptions) {
-        //   options[opt] = opts && has(opts, opt) ? opts[opt] : defaultOptions[opt];
-        // }
+        // validate options
+        exports.validOptions.forEach(function(optionKey) {
+          if (has(opts, optionKey) && Array.isArray(opts[optionKey])) {
+            // validate node types
+            var optionValue = opts[optionKey],
+            validatedOptionValue = optionValue.reduce(function(acc, nodeType) {
+              if (has(exports.validNodeTypes, nodeType)) {
+                acc.push(nodeType);
+              } else {
+                console.log("Node type \""+nodeType+"\" is invalid.");
+              }
+              return acc;
+            }, []);
+            if (validatedOptionValue.length > 0) {
+              options[optionKey] = validatedOptionValue;
+            }
+          }
+        });
 
-        // validate that they are Arrays
-        var whiteList = opts && has(opts, "whiteList") ? opts.whiteList : [];
-        var blackList = opts && has(opts, "blackList") ? opts.blackList : [];
-        var structure = opts && has(opts, "structure") ? opts.structure : [];
+        if (Object.keys(options).length === 0) {
+          return {success: false, error: "options is empty"};
+        }
 
-        // console.log("white list: "+JSON.stringify(whiteList));
+        options.whiteList = has(options, "whiteList") ? unique(options.whiteList) : [];
+        options.blackList = has(options, "blackList") ? unique(options.blackList) : [];
+        options.structure = has(options, "structure") ? options.structure : [];
+
+        if (options.whiteList.union(options.blackList).length>0) {
+          return {success: false, error: "white list and black list are conflicting"};
+        }
+
+        // console.log("options: "+JSON.stringify(options));
+
+        try {
+          var parsed = acorn.parse(input, {});
+        } catch (err) {
+          return {success: false, error: "parserError: "+err};
+        }
 
         // test white and black list
-        var visitors = {};
+        var listsTestResults = function(whiteList, blackList) {
+          var visitors = {};
 
-        // test whiteList
-        var whiteListPassed = false;
-        var whiteListAppeared = [];
-        var whiteListNodeHandler = function(node, scope) {
-          var nodeName = node.type;
-          if (whiteListAppeared.contains(nodeName)) {
+          var whiteListOutput = [],
+          whiteListNodeHandler = simpleWalkNodeHandler(whiteList, whiteListOutput);
+          whiteList.forEach(function (nodeType) {
+            visitors[nodeType] = whiteListNodeHandler;
+          });
+
+          var blackListOutput = [],
+          blackListNodeHandler = simpleWalkNodeHandler(blackList, blackListOutput);
+          blackList.forEach(function (nodeType) {
+            visitors[nodeType] = blackListNodeHandler;
+          });
+
+          walk.simple(parsed, visitors);
+
+          var missingInWihteList = whiteList.reduce(function(acc, nodeType) {
+            if (!whiteListOutput.contains(nodeType)) {
+              acc.push(nodeType);
+            }
+            return acc;
+          }, []);
+          return {
+            "missingFromWhiteList": missingInWihteList,
+            "presentInblackList": blackListOutput,
+          };
+        }(options.whiteList, options.blackList);
+
+        // test structure
+        var structureTestResults = function(structure) {
+          var visitors = {}, successful = false, maxJ = 0;
+          var structureNodeHandler = function(node, state) {
+            if (successful) {
+              return;
+            }
+            var j = 0;
+            state.forEach(function(node) {
+              if (node.type === structure[j]) {
+                j++;
+                maxJ = Math.max(maxJ, j);
+              }
+              if (j === structure.length) {
+                successful = true;
+                return;
+              }
+            });
+          };
+
+          structure.forEach(function (nodeType) {
+            visitors[nodeType] = structureNodeHandler;
+          });
+
+          walk.ancestor(parsed, visitors);
+
+          var missing = successful ? [] : structure.slice(maxJ, structure.length);
+          return {
+            missingFromStructure: missing,
+          };
+        }(options.structure);
+
+        var failed = {};
+        if (listsTestResults.missingFromWhiteList.length !== 0) {
+          failed.whiteList = listsTestResults.missingFromWhiteList;
+        }
+        if (listsTestResults.presentInblackList.length !== 0) {
+          failed.blackList = listsTestResults.presentInblackList;
+        }
+        if (structureTestResults.missingFromStructure.length !== 0) {
+          failed.structure = structureTestResults.missingFromStructure;
+        }
+
+        var ret = {};
+        if (Object.keys(failed).length === 0) {
+          ret.success = true;
+        } else {
+          ret.success = false;
+          ret.failed = failed;
+        }
+        // console.log("failed "+failed);
+        return ret;
+      };
+
+      exports.test = test;
+
+      var simpleWalkNodeHandler = function(inputArray, outputArray) {
+        var isOutputArrayFull = false;
+        return function(node, scope) {
+          if (isOutputArrayFull) {
             return;
           }
-          if (whiteListAppeared.push(nodeName) === whiteList.length) {
-            whiteListPassed = true;
+          var nodeName = node.type;
+          if (!outputArray.contains(nodeName)) {
+            if (outputArray.push(nodeName) === inputArray.length) {
+              isOutputArrayFull = true;
+            }
           }
         };
-        for (var i=0; i<whiteList.length; i++) {
-          visitors[whiteList[i]] = whiteListNodeHandler;
-        }
-
-        // test whiteList
-        var blackListPassed = true;
-        var blackListNodeHandler = function(node, scope) {
-          blackListPassed = false;
-        };
-        for (var i=0; i<blackList.length; i++) {
-          visitors[blackList[i]] = blackListNodeHandler;
-        }
-
-        console.log("visitors: "+JSON.stringify(visitors));
-
-        var parsed = acorn.parse(input, {});
-        // walk the tree and test
-        walk.simple(parsed, visitors);
-
-        var structureVisitor = {};
-        // test whiteList
-        var structurePassed = true;
-        var structureNodeHandler = function(node, state) {
-          console.log(JSON.stringify(state));
-          structurePassed = false;
-        };
-        for (var i=0; i<structure.length; i++) {
-          structureVisitor[structure[i]] = structureNodeHandler;
-        }
-
-        walk.ancestor(parsed, structureVisitor);
-
-        return whiteListPassed && blackListPassed;
       };
-      exports.test = test;
 
       Array.prototype.contains = function (v) {
         return this.indexOf(v) > -1;
       };
 
+      Array.prototype.union = function (other) {
+        var union = [], self = this.slice(0);
+        other.forEach(function(v) {
+          if (self.contains(v)) {
+            union.push(v);
+          }
+        });
+        return union;
+      };
+
       function has(obj, propName) {
         return Object.prototype.hasOwnProperty.call(obj, propName);
       }
+
+      function unique(a) {
+        return a.sort().filter(function(item, pos) {
+          return !pos || item != a[pos - 1];
+        });
+      }
+
 });

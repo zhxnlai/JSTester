@@ -31,7 +31,7 @@ var Demo = React.createClass({
     var opts = JSON.parse(this.state.optionsText);
     var output = JSTester.test(this.state.inputText, opts);
     console.log("output: "+JSON.stringify(output));
-    this.setState({outputText: JSON.stringify(output)});
+    this.setState({outputText: JSON.stringify(output, null, "\t")});
   },
   onResetButtonClick: function(e) {
     this.setState(this.getInitialState());
