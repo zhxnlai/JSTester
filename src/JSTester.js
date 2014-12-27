@@ -114,7 +114,7 @@
         });
 
         if (Object.keys(options).length === 0) {
-          return {success: false, error: "options is empty"};
+          return {success: false, error: "options is empty or no valid options"};
         }
 
         options.whiteList = has(options, "whiteList") ? unique(options.whiteList) : [];

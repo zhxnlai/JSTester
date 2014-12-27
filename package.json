@@ -14,7 +14,7 @@
   },
   "main": "JSTester.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "test.js"
   },
   "repository": {
     "type": "git",
@@ -34,5 +34,7 @@
     "acorn": "^0.11.0",
     "codemirror": "^4.8.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "should": "^4.4.1"
+  }
 }
