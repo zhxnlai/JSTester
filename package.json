@@ -14,7 +14,7 @@
   },
   "main": "JSTester.js",
   "scripts": {
-    "test": "test.js"
+    "test": "mocha spec"
   },
   "repository": {
     "type": "git",
