@@ -15,6 +15,15 @@ var optionsInvalid2 = {
   "blackList": ["ad", "IfStatement"]
 };
 
+var optionsEmpty1 = {};
+var optionsEmpty2 = {
+  "whiteList": ["ad"],
+  "blackList": ["ad", "IfStaaftdement"]
+};
+var optionsEmpty3 = {
+  "whiteList": [],
+  "blackList": []
+};
 
 // input for dedupe
 var optionsDedupe1 = {
@@ -44,6 +53,12 @@ describe("JSTester", function() {
     it("should return error when conflicts occur", function() {
       JSTester.test(inputVariableDeclaration1, optionsConflict1).should.have.property("success", false);
     });
+    it("should return error when options is empty", function() {
+      JSTester.test(inputVariableDeclaration1, optionsEmpty1).should.have.property("success", false);
+      JSTester.test(inputVariableDeclaration1, optionsEmpty2).should.have.property("success", false);
+      JSTester.test(inputVariableDeclaration1, optionsEmpty3).should.have.property("success", false);
+    });
+
 
   });
 });
